@@ -1,0 +1,1912 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>프리킥 마스터 - FREE KICK MASTER 2.5D</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Pretendard:wght@400;600;700;800&family=Chakra+Petch:ital,wght@0,600;0,700;1,700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #030712;
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: #f8fafc;
+    }
+    .font-display {
+      font-family: 'Black Han Sans', sans-serif;
+      letter-spacing: 0.02em;
+    }
+    .font-tech {
+      font-family: 'Chakra Petch', sans-serif;
+    }
+    #game-canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    .glass-panel {
+      background: rgba(9, 14, 28, 0.78);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+    }
+    .dist-btn {
+      transition: all 0.16s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .dist-btn.active {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: #ffffff;
+      border-color: #6ee7b7;
+      box-shadow: 0 0 16px rgba(16, 185, 129, 0.55);
+      transform: translateY(-1px);
+    }
+    .diff-btn.active {
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      color: #0f172a;
+      font-weight: 800;
+      border-color: #fde68a;
+    }
+    .foot-btn {
+      transition: all 0.16s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .foot-btn.active {
+      background: linear-gradient(135deg, #38bdf8 0%, #2563eb 100%);
+      color: #ffffff;
+      border-color: #93c5fd;
+      box-shadow: 0 0 14px rgba(56, 189, 248, 0.55);
+    }
+    @keyframes popBanner {
+      0% { transform: translate(-50%, -50%) scale(0.45); opacity: 0; }
+      65% { transform: translate(-50%, -50%) scale(1.08); opacity: 1; }
+      100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    }
+    .banner-pop {
+      animation: popBanner 0.42s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+    .keycap {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2px 7px;
+      border-radius: 6px;
+      background: rgba(30, 41, 59, 0.95);
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      border-bottom-width: 3px;
+      font-family: 'Chakra Petch', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      color: #e2e8f0;
+    }
+    .keycap.shift-active {
+      background: linear-gradient(135deg, #ec4899, #8b5cf6);
+      border-color: #f9a8d4;
+      color: #fff;
+      box-shadow: 0 0 12px rgba(236, 72, 153, 0.65);
+    }
+  </style>
+</head>
+<body class="relative w-full h-full">
+
+  <!-- 메인 2.5D 경기장 캔버스 -->
+  <canvas id="game-canvas"></canvas>
+
+  <!-- 상단 HUD: 스코어, 거리 선택(15m~40m, 5m 단위), 난이도 -->
+  <header class="fixed top-0 left-0 right-0 z-20 pointer-events-none p-2 sm:p-3 flex flex-col gap-2">
+    <div class="max-w-6xl mx-auto w-full flex flex-wrap items-center justify-between gap-2">
+      
+      <!-- 좌측: 방송 중계 스타일 스코어보드 -->
+      <div class="glass-panel rounded-xl px-3 py-1.5 sm:px-4 sm:py-2 flex items-center gap-3 pointer-events-auto">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span class="font-display text-sm sm:text-base text-white tracking-wide">FREE KICK</span>
+        </div>
+        <div class="h-5 w-px bg-slate-700"></div>
+        <div class="flex items-center gap-3 font-tech">
+          <div class="text-center">
+            <div class="text-[10px] text-slate-400 uppercase leading-none">GOALS</div>
+            <div id="hud-goals" class="text-lg sm:text-xl font-bold text-emerald-400 leading-tight">0</div>
+          </div>
+          <div class="text-center">
+            <div class="text-[10px] text-slate-400 uppercase leading-none">SHOTS</div>
+            <div id="hud-attempts" class="text-lg sm:text-xl font-bold text-slate-200 leading-tight">0</div>
+          </div>
+          <div class="text-center">
+            <div class="text-[10px] text-slate-400 uppercase leading-none">STREAK</div>
+            <div id="hud-streak" class="text-lg sm:text-xl font-bold text-amber-400 leading-tight">0</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 중앙: 프리킥 거리 선택기 (15m ~ 40m, 5m 단위) -->
+      <div class="glass-panel rounded-xl px-2.5 py-1.5 flex items-center gap-1.5 pointer-events-auto">
+        <span class="text-[11px] font-bold text-emerald-300 px-1.5 hidden sm:inline">거리 선택</span>
+        <div id="distance-selector" class="flex items-center gap-1">
+          <button data-dist="15" class="dist-btn active rounded-lg px-2.5 py-1 text-xs sm:text-sm font-tech font-bold border border-slate-700 bg-slate-900/80 text-slate-300 hover:text-white">15m</button>
+          <button data-dist="20" class="dist-btn rounded-lg px-2.5 py-1 text-xs sm:text-sm font-tech font-bold border border-slate-700 bg-slate-900/80 text-slate-300 hover:text-white">20m</button>
+          <button data-dist="25" class="dist-btn rounded-lg px-2.5 py-1 text-xs sm:text-sm font-tech font-bold border border-slate-700 bg-slate-900/80 text-slate-300 hover:text-white">25m</button>
+          <button data-dist="30" class="dist-btn rounded-lg px-2.5 py-1 text-xs sm:text-sm font-tech font-bold border border-slate-700 bg-slate-900/80 text-slate-300 hover:text-white">30m</button>
+          <button data-dist="35" class="dist-btn rounded-lg px-2.5 py-1 text-xs sm:text-sm font-tech font-bold border border-slate-700 bg-slate-900/80 text-slate-300 hover:text-white">35m</button>
+          <button data-dist="40" class="dist-btn rounded-lg px-2.5 py-1 text-xs sm:text-sm font-tech font-bold border border-slate-700 bg-slate-900/80 text-slate-300 hover:text-white">40m</button>
+        </div>
+      </div>
+
+      <!-- 우측: 주발(오른발/왼발) 선택, 난이도 & 사운드 토글 -->
+      <div class="glass-panel rounded-xl px-2.5 py-1.5 flex items-center gap-1.5 pointer-events-auto">
+        <!-- 주발 선택 토글 -->
+        <div id="foot-selector" class="flex items-center gap-1 bg-slate-950/70 p-0.5 rounded-lg border border-slate-700/80" title="차기 전 주발 선택 (단축키: F)">
+          <button data-foot="left" class="foot-btn rounded-md px-2 py-1 text-[11px] font-bold border border-transparent text-slate-300 hover:text-white">왼발</button>
+          <button data-foot="right" class="foot-btn active rounded-md px-2 py-1 text-[11px] font-bold border border-transparent text-slate-300 hover:text-white">오른발</button>
+        </div>
+        <div class="h-4 w-px bg-slate-700 mx-0.5"></div>
+        <div id="diff-selector" class="flex items-center gap-1">
+          <button data-diff="easy" class="diff-btn rounded-lg px-2 py-1 text-[11px] border border-slate-700 bg-slate-900/80 text-slate-300">쉬움</button>
+          <button data-diff="normal" class="diff-btn active rounded-lg px-2 py-1 text-[11px] border border-slate-700 bg-slate-900/80 text-slate-300">보통</button>
+          <button data-diff="hard" class="diff-btn rounded-lg px-2 py-1 text-[11px] border border-slate-700 bg-slate-900/80 text-slate-300">어려움</button>
+        </div>
+        <button id="btn-sound" title="사운드 켜기/끄기" class="ml-1 w-8 h-8 rounded-lg bg-slate-800/90 hover:bg-slate-700 border border-slate-600 flex items-center justify-center text-sm">
+          🔊
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- 우측 하단: 실시간 축구공 발등 타점(Contact Point) 인디케이터 -->
+  <aside class="fixed right-3 bottom-24 sm:bottom-24 z-20 pointer-events-auto">
+    <div class="glass-panel rounded-2xl p-3 w-36 sm:w-44 flex flex-col items-center">
+      <div class="w-full flex items-center justify-between mb-1.5">
+        <span class="text-[11px] font-bold text-slate-300">발등 타점 (스핀)</span>
+        <button id="btn-reset-spin" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-600">초기화</button>
+      </div>
+      
+      <!-- 2D 축구공 타점 패드 (Shift+방향키 또는 터치/드래그 조작 가능) -->
+      <div id="strike-pad" class="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full cursor-pointer shadow-inner overflow-hidden border-2 border-slate-500/60"
+           style="background: radial-gradient(circle at 35% 30%, #ffffff 0%, #e2e8f0 55%, #94a3b8 100%);">
+        <!-- 축구공 오각형 패턴 장식 -->
+        <svg viewBox="0 0 100 100" class="w-full h-full opacity-35 pointer-events-none">
+          <polygon points="50,34 64,44 59,60 41,60 36,44" fill="#0f172a"/>
+          <polygon points="50,6 63,15 58,25 42,25 37,15" fill="#0f172a"/>
+          <polygon points="88,38 94,52 83,61 74,52 78,39" fill="#0f172a"/>
+          <polygon points="12,38 22,39 26,52 17,61 6,52" fill="#0f172a"/>
+          <polygon points="28,86 38,76 50,82 46,94 31,94" fill="#0f172a"/>
+          <polygon points="72,86 69,94 54,94 50,82 62,76" fill="#0f172a"/>
+          <line x1="50" y1="34" x2="50" y2="25" stroke="#0f172a" stroke-width="2"/>
+          <line x1="64" y1="44" x2="78" y2="39" stroke="#0f172a" stroke-width="2"/>
+          <line x1="36" y1="44" x2="22" y2="39" stroke="#0f172a" stroke-width="2"/>
+          <line x1="59" y1="60" x2="62" y2="76" stroke="#0f172a" stroke-width="2"/>
+          <line x1="41" y1="60" x2="38" y2="76" stroke="#0f172a" stroke-width="2"/>
+        </svg>
+        <!-- 십자 가이드라인 -->
+        <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div class="w-full h-px bg-slate-900/25"></div>
+        </div>
+        <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div class="h-full w-px bg-slate-900/25"></div>
+        </div>
+        <!-- 발등 타격 지점 마커 (클리트/임팩트 포인트) -->
+        <div id="strike-marker" class="absolute w-5 h-5 -ml-2.5 -mt-2.5 rounded-full bg-rose-600 border-2 border-white shadow-lg flex items-center justify-center transition-transform duration-75"
+             style="left: 50%; top: 62%;">
+          <div class="w-1.5 h-1.5 rounded-full bg-yellow-300"></div>
+        </div>
+      </div>
+
+      <!-- 현재 타점 특성 표시 -->
+      <div id="spin-label" class="mt-1.5 text-[11px] font-bold text-amber-300 text-center leading-tight">
+        정중앙 드라이브 슛
+      </div>
+      <div id="foot-spin-hint" class="text-[10px] text-sky-300 mt-0.5 text-center font-semibold">
+        오른발 키커 (F키 전환)
+      </div>
+    </div>
+  </aside>
+
+  <!-- 좌측 하단: 키커 시점(바라보는 방향) & 거리/바람 상태 표시 -->
+  <aside class="fixed left-3 bottom-24 sm:bottom-24 z-20 pointer-events-none hidden sm:block">
+    <div class="glass-panel rounded-2xl p-3 w-48 space-y-1.5">
+      <div class="flex items-center justify-between text-xs">
+        <span class="text-slate-400">프리킥 거리</span>
+        <span id="info-dist" class="font-tech font-bold text-emerald-400">15m (근거리)</span>
+      </div>
+      <div class="flex items-center justify-between text-xs">
+        <span class="text-slate-400">공 위치 각도</span>
+        <span id="info-spot" class="font-tech font-bold text-amber-300">중앙 (0.0m)</span>
+      </div>
+      <div class="flex items-center justify-between text-xs">
+        <span class="text-slate-400">수비벽 인원</span>
+        <span id="info-wall" class="font-tech font-bold text-slate-200">4명</span>
+      </div>
+      <div class="flex items-center justify-between text-xs">
+        <span class="text-slate-400">시선 각도</span>
+        <span id="info-yaw" class="font-tech font-bold text-sky-300">0.0° (정면)</span>
+      </div>
+      <div class="flex items-center justify-between text-xs">
+        <span class="text-slate-400">수직 발사각</span>
+        <span id="info-pitch" class="font-tech font-bold text-amber-300">중간 탄도</span>
+      </div>
+      <div class="flex items-center justify-between text-xs">
+        <span class="text-slate-400">키커 주발</span>
+        <span id="info-foot" class="font-tech font-bold text-sky-300">오른발 (R)</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- 중앙 결과 배너 (GOAL!, POST!, SAVED!, WALL BLOCK!, MISS!) -->
+  <div id="result-banner" class="hidden fixed top-1/3 left-1/2 z-30 pointer-events-none text-center">
+    <div id="banner-title" class="font-display text-5xl sm:text-7xl text-white drop-shadow-[0_6px_24px_rgba(0,0,0,0.85)] tracking-wider">
+      GOAL!
+    </div>
+    <div id="banner-sub" class="mt-1 inline-block px-4 py-1 rounded-full bg-slate-950/80 border border-white/20 text-xs sm:text-sm font-bold text-emerald-300">
+      환상적인 감아차기!
+    </div>
+  </div>
+
+  <!-- 하단 컨트롤 바: 스페이스바 슈팅 파워 게이지 & 조작 안내 -->
+  <footer class="fixed bottom-0 left-0 right-0 z-20 p-2 sm:p-3 pointer-events-none">
+    <div class="max-w-3xl mx-auto glass-panel rounded-2xl px-3 py-2.5 sm:px-5 sm:py-3 pointer-events-auto">
+      
+      <!-- 슈팅 파워 게이지 바 -->
+      <div class="flex items-center gap-3 mb-2">
+        <span class="text-xs font-bold text-slate-300 w-16 shrink-0">SHOOT POWER</span>
+        <div class="relative flex-1 h-4 sm:h-5 bg-slate-950 rounded-full overflow-hidden border border-slate-700 p-0.5">
+          <!-- 최적 파워 권장 존 표시 -->
+          <div id="sweet-spot-zone" class="absolute top-0 bottom-0 bg-emerald-500/25 border-x border-emerald-400/50" style="left: 55%; width: 28%;"></div>
+          <!-- 실제 차오르는 파워 바 -->
+          <div id="power-bar" class="h-full rounded-full transition-none"
+               style="width: 0%; background: linear-gradient(90deg, #22c55e 0%, #eab308 65%, #ef4444 100%);"></div>
+        </div>
+        <span id="power-value" class="font-tech text-xs sm:text-sm font-bold text-amber-300 w-11 text-right">0%</span>
+      </div>
+
+      <!-- 키보드 단축키 & 모바일 터치 버튼 -->
+      <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-300">
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span><span class="keycap">← ↑ ↓ →</span> 시점 조준</span>
+          <span><span id="shift-indicator" class="keycap">Shift</span>+<span class="keycap">방향키</span> 타점</span>
+          <span><span class="keycap">F</span> 왼발/오른발</span>
+          <span><span class="keycap">Space</span> 파워·슈팅</span>
+        </div>
+
+        <!-- 모바일/마우스용 슈팅 버튼 -->
+        <div class="flex items-center gap-1.5 ml-auto">
+          <button id="btn-next-kick" class="hidden px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow">
+            다음 킥 (Enter)
+          </button>
+          <button id="btn-shoot-touch" class="px-4 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 active:scale-95 text-slate-950 font-extrabold text-xs shadow-lg">
+            SPACE 슛
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </footer>
+
+  <!-- 시작 안내 오버레이 (첫 진입 시 간단한 조작 요약 후 바로 플레이) -->
+  <div id="start-modal" class="fixed inset-0 z-40 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="glass-panel rounded-3xl max-w-lg w-full p-6 sm:p-7 border border-emerald-400/30 text-center space-y-5">
+      <div>
+        <div class="inline-block px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs font-bold mb-2">
+          NIGHT STADIUM 2.5D SIMULATION
+        </div>
+        <h1 class="font-display text-3xl sm:text-4xl text-white">프리킥 마스터</h1>
+        <p class="text-slate-300 text-xs sm:text-sm mt-1">15m~40m 거리에서 수비벽과 골키퍼를 뚫고 환상적인 프리킥을 꽂아 넣으세요!</p>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-left text-xs">
+        <div class="bg-slate-900/80 border border-slate-700/80 rounded-xl p-3">
+          <div class="font-bold text-sky-400 mb-1">1. 방향키 (←↑↓→)</div>
+          <p class="text-slate-300 leading-relaxed">키커가 골대를 바라보는 시점과 슈팅 목표 각도를 조절합니다.</p>
+        </div>
+        <div class="bg-slate-900/80 border border-slate-700/80 rounded-xl p-3">
+          <div class="font-bold text-pink-400 mb-1">2. Shift + 방향키</div>
+          <p class="text-slate-300 leading-relaxed">발등이 공에 맞는 타점을 조절해 바나나킥·무회전·드라이브 슛을 구사합니다.</p>
+        </div>
+        <div class="bg-slate-900/80 border border-slate-700/80 rounded-xl p-3">
+          <div class="font-bold text-amber-400 mb-1">3. Space 게이지</div>
+          <p class="text-slate-300 leading-relaxed">누르고 있으면 파워 게이지가 차오르며, 떼는 순간 킥을 시도합니다.</p>
+        </div>
+      </div>
+
+      <button id="btn-start-game" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-extrabold text-base shadow-lg shadow-emerald-500/30 transition transform hover:-translate-y-0.5">
+        경기장 입장하기 (킥오프)
+      </button>
+    </div>
+  </div>
+
+<script>
+/**
+ * ============================================================================
+ * 프리킥 마스터 (FREE KICK MASTER 2.5D)
+ * - 15m ~ 40m (5m 단위) 거리 선택 및 거리별 3D 원근 투영 / 수비벽 배치
+ * - 방향키 단독: 키커가 골대를 바라보는 시점(Yaw/Pitch) 회전 및 궤적 조준
+ * - Shift + 방향키: 공에 발등이 맞는 타점(Strike Point: X, Y) 조절 -> 마그누스 스핀 & 발사 탄도 변화
+ * - Spacebar 홀드 & 릴리즈: 슈팅 파워 게이지 충전 및 킥 실행
+ * - Web Audio API 기반 실시간 효과음 (휘슬, 킥 임팩트, 골포스트, 관중 함성, 폭죽)
+ * ============================================================================
+ */
+
+(function () {
+  const canvas = document.getElementById('game-canvas');
+  const ctx = canvas.getContext('2d');
+
+  // --- 오디오 시스템 (Web Audio API) ---
+  class SoundEngine {
+    constructor() {
+      this.ctx = null;
+      this.enabled = true;
+    }
+    init() {
+      if (!this.ctx) {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) this.ctx = new AudioCtx();
+      }
+      if (this.ctx && this.ctx.state === 'suspended') {
+        this.ctx.resume();
+      }
+    }
+    playKick(powerRatio) {
+      if (!this.enabled) return;
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      // 묵직한 가죽 공 타격음
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      const baseFreq = 115 + powerRatio * 45;
+      osc.frequency.setValueAtTime(baseFreq, now);
+      osc.frequency.exponentialRampToValueAtTime(34, now + 0.18);
+      gain.gain.setValueAtTime(0.65 * Math.max(0.4, powerRatio), now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.21);
+    }
+    playPost() {
+      if (!this.enabled) return;
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      // 금속 골포스트 팅! 소리
+      [520, 890, 1340].forEach((freq, idx) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = idx === 0 ? 'sine' : 'triangle';
+        osc.frequency.setValueAtTime(freq, now);
+        osc.frequency.exponentialRampToValueAtTime(freq * 0.96, now + 0.45);
+        gain.gain.setValueAtTime(0.22 / (idx + 1), now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.52);
+      });
+    }
+    playWallBlock() {
+      if (!this.enabled) return;
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(95, now);
+      osc.frequency.exponentialRampToValueAtTime(42, now + 0.14);
+      gain.gain.setValueAtTime(0.5, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.16);
+    }
+    playGoalCheer() {
+      if (!this.enabled) return;
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      // 화이트 노이즈 기반 관중 함성 + 팡파르
+      const bufferSize = this.ctx.sampleRate * 1.6;
+      const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.sin((i / bufferSize) * Math.PI);
+      }
+      const noise = this.ctx.createBufferSource();
+      noise.buffer = buffer;
+
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(650, now);
+      filter.Q.value = 0.8;
+
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0.01, now);
+      gain.gain.linearRampToValueAtTime(0.35, now + 0.25);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 1.6);
+
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.ctx.destination);
+      noise.start(now);
+    }
+    playFireworkPop() {
+      if (!this.enabled) return;
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(160, now);
+      osc.frequency.exponentialRampToValueAtTime(28, now + 0.25);
+      gain.gain.setValueAtTime(0.18, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.26);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.27);
+    }
+  }
+  const sound = new SoundEngine();
+
+  // --- 물리 및 경기장 규격 상수 (상하 120%, 좌우 130% 확대 규격) ---
+  const GRAVITY = 12.6;      // 수비벽을 넘긴 뒤 크로스바 아래로 뚝 떨어지도록 체감 중력 강화
+  const BALL_RADIUS = 0.115;
+  const GOAL_WIDTH = 9.52;   // 7.32m * 1.3
+  const GOAL_HEIGHT = 2.93;  // 2.44m * 1.2
+
+  // 난이도별 설정 (쉬움 난이도는 입문자도 시원하게 득점할 수 있도록 대폭 완화)
+  const DIFFICULTY_CFG = {
+    easy: {
+      gaugeSpeed: 46,        // 게이지가 천천히 차올라 파워 조절이 매우 쉬움
+      gkReactionTime: 0.56,  // 골키퍼가 공을 늦게 보고 반응
+      gkDiveSpeed: 2.9,      // 느린 골키퍼 이동 속도
+      gkReach: 0.72,         // 좁은 선방 범위
+      gkAccuracy: 0.45,      // 55% 확률로 엉뚱한 방향 예측
+      wallJumpChance: 0.0,   // 수비벽이 점프하지 않음
+      wallJumpHeight: 0.0,
+      wallCountOffset: -2,   // 수비벽 인원 2명 감소 (15~20m: 3명, 35~40m: 0~1명)
+      previewSteps: 36       // 골라인까지 닿는 긴 조준 가이드라인
+    },
+    normal: {
+      gaugeSpeed: 76,
+      gkReactionTime: 0.34,
+      gkDiveSpeed: 4.9,
+      gkReach: 1.02,
+      gkAccuracy: 0.75,
+      wallJumpChance: 0.45,
+      wallJumpHeight: 0.35,
+      wallCountOffset: -1,
+      previewSteps: 22
+    },
+    hard: {
+      gaugeSpeed: 112,
+      gkReactionTime: 0.16,
+      gkDiveSpeed: 7.4,
+      gkReach: 1.32,
+      gkAccuracy: 0.96,
+      wallJumpChance: 0.9,
+      wallJumpHeight: 0.56,
+      wallCountOffset: 0,
+      previewSteps: 14
+    }
+  };
+
+  // --- 게임 상태 관리 ---
+  const state = {
+    phase: 'aiming', // 'aiming' | 'charging' | 'runup' | 'flight' | 'result'
+    distance: 15,    // 15, 20, 25, 30, 35, 40 (m)
+    difficulty: 'normal',
+
+    // 스코어 통계
+    goals: 0,
+    attempts: 0,
+    streak: 0,
+
+    // 1) 방향키 단독 조준: 선수가 골대를 바라보는 방향 (시선/목표 방향)
+    // aimYaw: 수평 조준 각도 (라디안, 0 = 골대 정중앙, 음수 = 왼쪽, 양수 = 오른쪽)
+    // aimPitch: 수직 조준 각도 (라디안, 높을수록 위쪽 조준)
+    aimYaw: 0,
+    aimPitch: 0.21,
+
+    // 2) Shift + 방향키 조준: 공에 발등이 맞는 타점 (-1 ~ +1 정규화 좌표)
+    // strikeX: -1(공 왼쪽 타격 -> 오른쪽으로 휘는 인프론트/아웃프론트 스핀), +1(공 오른쪽 타격 -> 왼쪽으로 휘는 감아차기)
+    // strikeY: -1(공 위쪽 타격 -> 낮고 빠르게 깔리는 톱스핀/드라이브), +1(공 아래쪽 타격 -> 높이 떠오르는 백스핀/로빙)
+    strikeX: 0.0,
+    strikeY: -0.15, // 기본값: 살짝 위쪽 타격(수비벽을 넘겨 떨어지는 톱스핀 프리킥)
+
+    // 3) 스페이스바 파워 게이지 (0 ~ 100)
+    power: 0,
+    powerDir: 1,
+
+    // 4) 주발 선택 ('right' | 'left')
+    preferredFoot: 'right',
+
+    // 5) 공이 놓여진 가로 위치 오프셋 (골대 중앙 기준 -5.5m ~ +5.5m 랜덤 배치)
+    spotOffsetX: 0,
+
+    // 키보드 입력 상태
+    keys: {
+      ArrowLeft: false,
+      ArrowRight: false,
+      ArrowUp: false,
+      ArrowDown: false,
+      Shift: false,
+      Space: false
+    },
+
+    // 키커 도움닫기 애니메이션
+    runupProgress: 0,
+    kickerSide: -1, // 오른발잡이는 공 왼쪽 뒤(-1), 왼발잡이는 공 오른쪽 뒤(+1)
+
+    // 축구공 3D 물리 상태 (원점: 프리킥 지점 = (0, BALL_RADIUS, 0), 골라인 = z = distance)
+    ball: {
+      x: 0,
+      y: BALL_RADIUS,
+      z: 0,
+      vx: 0,
+      vy: 0,
+      vz: 0,
+      spinX: 0, // 수직 스핀 (탑/백스핀)
+      spinY: 0, // 좌우 사이드 스핀 (바나나킥 커브)
+      rollAngle: 0,
+      trail: []
+    },
+
+    // 수비벽 상태 (FIFA 규정 9.15m 전방 배치)
+    wall: {
+      z: 9.15,
+      centerX: 0,
+      players: [],
+      jumpOffset: 0,
+      jumpVel: 0,
+      jumped: false
+    },
+
+    // 골키퍼 상태
+    gk: {
+      x: 0,
+      y: 0,
+      z: 15,
+      targetX: 0,
+      targetY: 0,
+      diveDir: 0, // -1 왼쪽, 0 대기, 1 오른쪽
+      diveProgress: 0,
+      reacted: false,
+      reactionTimer: 0
+    },
+
+    // 골망 출렁임 및 폭죽 파티클
+    netRipple: { active: false, x: 0, y: 1.2, time: 0 },
+    fireworks: [],
+    sparks: [],
+    resultTimer: 0,
+    lastTime: 0
+  };
+
+  // --- UI DOM 캐싱 ---
+  const ui = {
+    goals: document.getElementById('hud-goals'),
+    attempts: document.getElementById('hud-attempts'),
+    streak: document.getElementById('hud-streak'),
+    powerBar: document.getElementById('power-bar'),
+    powerValue: document.getElementById('power-value'),
+    sweetSpot: document.getElementById('sweet-spot-zone'),
+    strikePad: document.getElementById('strike-pad'),
+    strikeMarker: document.getElementById('strike-marker'),
+    spinLabel: document.getElementById('spin-label'),
+    footSpinHint: document.getElementById('foot-spin-hint'),
+    shiftIndicator: document.getElementById('shift-indicator'),
+    infoDist: document.getElementById('info-dist'),
+    infoSpot: document.getElementById('info-spot'),
+    infoWall: document.getElementById('info-wall'),
+    infoYaw: document.getElementById('info-yaw'),
+    infoPitch: document.getElementById('info-pitch'),
+    infoFoot: document.getElementById('info-foot'),
+    banner: document.getElementById('result-banner'),
+    bannerTitle: document.getElementById('banner-title'),
+    bannerSub: document.getElementById('banner-sub'),
+    btnNext: document.getElementById('btn-next-kick'),
+    btnShootTouch: document.getElementById('btn-shoot-touch'),
+    startModal: document.getElementById('start-modal')
+  };
+
+  // --- 캔버스 리사이즈 ---
+  let viewW = window.innerWidth;
+  let viewH = window.innerHeight;
+
+  function resizeCanvas() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    viewW = window.innerWidth;
+    viewH = window.innerHeight;
+    canvas.width = Math.floor(viewW * dpr);
+    canvas.height = Math.floor(viewH * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  window.addEventListener('resize', resizeCanvas);
+  resizeCanvas();
+
+  // --- 3D -> 2D 원근 투영 엔진 ---
+  // 카메라: 공 뒤쪽에서 공이 골대를 바라보는 기본 각도 + 사용자의 시선 조절(aimYaw)을 반영
+  function project3D(wx, wy, wz) {
+    const camZ = -4.2;           // 공 뒤 4.2m 위치
+    const camY = 1.62;           // 키커 어깨 높이 시선
+    // 공이 측면(spotOffsetX)에 놓여 있으면 골대 중앙을 바라보도록 카메라 기준선과 시선 각도 보정
+    const baseGoalYaw = Math.atan2(-state.spotOffsetX, state.distance);
+    const camX = -Math.sin(baseGoalYaw + state.aimYaw * 0.75) * 3.8;
+
+    const dz = Math.max(0.25, wz - camZ);
+    const totalYaw = baseGoalYaw * 0.85 + state.aimYaw * 0.62;
+    const yawShift = Math.tan(totalYaw) * dz;
+    const relX = (wx - camX) - yawShift;
+    const relY = wy - camY;
+
+    // 거리에 따른 자동 줌 보정 (40m에서도 골대가 시인성 좋게 보이도록 망원 보정)
+    const zoomFactor = 1.0 + (state.distance - 15) * 0.017;
+    const focal = Math.min(viewW, viewH) * 0.88 * zoomFactor;
+
+    const horizonY = viewH * 0.43; // 지평선 높이
+    const sx = viewW * 0.5 + (relX / dz) * focal;
+    const sy = horizonY - (relY / dz) * focal;
+    const scale = focal / dz;
+
+    return { x: sx, y: sy, scale, dz };
+  }
+
+  // --- 프리킥 세팅 초기화 (거리 변경 또는 다음 킥 준비) ---
+  function setupFreeKick(resetAim = false, randomizeSpot = true) {
+    state.phase = 'aiming';
+    state.power = 0;
+    state.powerDir = 1;
+    state.runupProgress = 0;
+    state.netRipple.active = false;
+    ui.banner.classList.add('hidden');
+    ui.banner.classList.remove('banner-pop');
+    ui.btnNext.classList.add('hidden');
+
+    // 공이 놓여진 위치(골대 중앙 대비 좌우 오프셋)를 랜덤으로 지정
+    if (randomizeSpot) {
+      const maxOffset = Math.min(5.8, state.distance * 0.24);
+      state.spotOffsetX = Number(((Math.random() * 2 - 1) * maxOffset).toFixed(2));
+    }
+
+    // 공의 위치에서 골대 정중앙을 향하는 기본 각도 계산
+    const baseGoalYaw = Math.atan2(-state.spotOffsetX, state.distance);
+
+    if (resetAim || randomizeSpot) {
+      state.aimYaw = baseGoalYaw;
+      state.aimPitch = 0.20 + (state.distance - 15) * 0.0028;
+    }
+
+    // 공 위치 초기화 (공이 놓인 지점을 로컬 X=0 원점으로 유지하고 골대·라인을 -spotOffsetX 만큼 이동해 렌더링)
+    state.ball = {
+      x: 0,
+      y: BALL_RADIUS,
+      z: 0,
+      vx: 0,
+      vy: 0,
+      vz: 0,
+      spinX: 0, // 수직 스핀 (탑/백스핀)
+      spinY: 0, // 좌우 사이드 스핀 (바나나킥 커브)
+      rollAngle: 0,
+      trail: []
+    };
+
+    // 거리에 따른 수비벽 구성 + 난이도별 인원 보정
+    const cfg = DIFFICULTY_CFG[state.difficulty];
+    let baseWallCount = 4;
+    if (state.distance <= 20) baseWallCount = 5;
+    else if (state.distance <= 30) baseWallCount = 4;
+    else if (state.distance === 35) baseWallCount = 3;
+    else baseWallCount = 2;
+    const wallCount = Math.max(0, baseWallCount + cfg.wallCountOffset);
+
+    const wallZ = 9.15;
+    const goalCenterX = -state.spotOffsetX;
+    // 공과 가까운 쪽 포스트(니어 포스트)를 막도록 고정 배치 (주발 변경과 무관하게 유지)
+    const nearPostSide = state.spotOffsetX < -0.25 ? -1 : (state.spotOffsetX > 0.25 ? 1 : -1);
+    const postX = goalCenterX + nearPostSide * (GOAL_WIDTH * 0.34);
+    const tWall = wallZ / state.distance;
+    const postCoverX = postX * tWall;
+
+    const spacing = 0.56;
+    const players = [];
+    for (let i = 0; i < wallCount; i++) {
+      const offset = (i - (wallCount - 1) / 2) * spacing;
+      players.push({
+        x: postCoverX + offset,
+        number: 4 + i,
+        height: 1.82 + (i % 2) * 0.04
+      });
+    }
+
+    state.wall = {
+      z: wallZ,
+      centerX: postCoverX,
+      players,
+      jumpOffset: 0,
+      jumpVel: 0,
+      jumped: false
+    };
+
+    // 골키퍼는 수비벽 반대쪽(파 포스트 방향) 골문을 커버하도록 고정 배치
+    state.gk = {
+      x: goalCenterX - nearPostSide * (GOAL_WIDTH * 0.16),
+      y: 0,
+      z: state.distance - 0.35,
+      targetX: goalCenterX - nearPostSide * (GOAL_WIDTH * 0.16),
+      targetY: 0,
+      diveDir: 0,
+      diveProgress: 0,
+      reacted: false,
+      reactionTimer: 0
+    };
+
+    updateHUD();
+  }
+
+  // --- HUD 및 타점 인디케이터 동기화 ---
+  function updateHUD() {
+    ui.goals.textContent = state.goals;
+    ui.attempts.textContent = state.attempts;
+    ui.streak.textContent = state.streak;
+
+    // 파워 게이지 UI 업데이트
+    const pInt = Math.round(state.power);
+    ui.powerBar.style.width = `${pInt}%`;
+    ui.powerValue.textContent = `${pInt}%`;
+
+    // 거리에 따른 권장 파워 존 표시 이동
+    const sweetLeft = Math.min(72, 46 + (state.distance - 15) * 0.95);
+    ui.sweetSpot.style.left = `${sweetLeft}%`;
+    ui.sweetSpot.style.width = '24%';
+
+    // Shift 키 활성 시각 표시
+    if (state.keys.Shift) {
+      ui.shiftIndicator.classList.add('shift-active');
+    } else {
+      ui.shiftIndicator.classList.remove('shift-active');
+    }
+
+    // 축구공 타점 마커 위치 업데이트 (-1..+1 -> 12%..88%)
+    const padX = 50 + state.strikeX * 38;
+    const padY = 50 + state.strikeY * 38;
+    ui.strikeMarker.style.left = `${padX}%`;
+    ui.strikeMarker.style.top = `${padY}%`;
+
+    // 타점 상태 텍스트 설명 (오른발/왼발 인사이드·아웃프론트 구분)
+    const sx = state.strikeX;
+    const sy = state.strikeY;
+    const isLeft = state.preferredFoot === 'left';
+    let desc = '';
+    if (Math.abs(sx) < 0.18 && Math.abs(sy) < 0.18) {
+      desc = '무회전 너클볼 슛';
+    } else {
+      let curveText = '직선';
+      if (sx > 0.2) {
+        curveText = isLeft ? '왼발 아웃프론트 커브' : '오른발 인사이드 감아차기';
+      } else if (sx < -0.2) {
+        curveText = isLeft ? '왼발 인사이드 감아차기' : '오른발 아웃프론트 커브';
+      }
+      const heightText = sy < -0.15 ? '수비벽 넘기는 탑스핀 딥' : (sy > 0.25 ? '높은 백스핀 로빙' : '중간 탄도');
+      desc = `${curveText} · ${heightText}`;
+    }
+    ui.spinLabel.textContent = desc;
+    ui.footSpinHint.textContent = isLeft ? '왼발 키커 (F키 전환)' : '오른발 키커 (F키 전환)';
+
+    // 좌측 상태 패널 업데이트
+    const distLabel = state.distance <= 20 ? '근거리' : (state.distance <= 30 ? '중거리' : '장거리');
+    ui.infoDist.textContent = `${state.distance}m (${distLabel})`;
+    const spotLabel = state.spotOffsetX < -0.35
+      ? `좌측 (${Math.abs(state.spotOffsetX).toFixed(1)}m)`
+      : (state.spotOffsetX > 0.35 ? `우측 (${state.spotOffsetX.toFixed(1)}m)` : '정중앙 (0.0m)');
+    ui.infoSpot.textContent = spotLabel;
+    ui.infoWall.textContent = `${state.wall.players.length}명`;
+    const degYaw = (state.aimYaw * 180 / Math.PI).toFixed(1);
+    const dirYaw = state.aimYaw < -0.02 ? '좌측' : (state.aimYaw > 0.02 ? '우측' : '정면');
+    ui.infoYaw.textContent = `${degYaw}° (${dirYaw})`;
+
+    const degPitch = (state.aimPitch * 180 / Math.PI).toFixed(1);
+    ui.infoPitch.textContent = `${degPitch}° 발사각`;
+    ui.infoFoot.textContent = isLeft ? '왼발 (L)' : '오른발 (R)';
+  }
+
+  // --- 주발(오른발 / 왼발) 변경 함수 ---
+  function setPreferredFoot(foot) {
+    if (state.phase === 'flight' || state.phase === 'runup') return;
+    state.preferredFoot = foot;
+    state.kickerSide = foot === 'right' ? -1 : 1;
+
+    document.querySelectorAll('#foot-selector .foot-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.foot === foot);
+    });
+
+    // 주발 변경 시에는 키커의 자세/모션과 UI만 갱신하고 수비벽·골키퍼 위치는 고정 유지
+    updateHUD();
+  }
+
+  document.querySelectorAll('#foot-selector .foot-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      setPreferredFoot(btn.dataset.foot);
+    });
+  });
+
+  // --- 거리 선택 버튼 이벤트 ---
+  document.querySelectorAll('#distance-selector .dist-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (state.phase === 'flight' || state.phase === 'runup') return;
+      document.querySelectorAll('#distance-selector .dist-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.distance = parseInt(btn.dataset.dist, 10);
+      setupFreeKick(true);
+    });
+  });
+
+  // --- 난이도 선택 버튼 이벤트 ---
+  document.querySelectorAll('#diff-selector .diff-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (state.phase === 'flight' || state.phase === 'runup') return;
+      document.querySelectorAll('#diff-selector .diff-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.difficulty = btn.dataset.diff;
+      setupFreeKick(false, false);
+    });
+  });
+
+  // --- 사운드 토글 & 타점 초기화 ---
+  document.getElementById('btn-sound').addEventListener('click', (e) => {
+    sound.enabled = !sound.enabled;
+    e.currentTarget.textContent = sound.enabled ? '🔊' : '🔇';
+  });
+
+  document.getElementById('btn-reset-spin').addEventListener('click', () => {
+    state.strikeX = 0;
+    state.strikeY = -0.15;
+    updateHUD();
+  });
+
+  // --- 축구공 타점 패드 마우스/터치 직접 드래그 지원 ---
+  let draggingStrike = false;
+  function handleStrikePointer(clientX, clientY) {
+    if (state.phase !== 'aiming' && state.phase !== 'charging') return;
+    const rect = ui.strikePad.getBoundingClientRect();
+    const nx = ((clientX - rect.left) / rect.width - 0.5) * 2.4;
+    const ny = ((clientY - rect.top) / rect.height - 0.5) * 2.4;
+    const mag = Math.hypot(nx, ny);
+    if (mag > 1) {
+      state.strikeX = nx / mag;
+      state.strikeY = ny / mag;
+    } else {
+      state.strikeX = nx;
+      state.strikeY = ny;
+    }
+    updateHUD();
+  }
+  ui.strikePad.addEventListener('mousedown', (e) => { draggingStrike = true; handleStrikePointer(e.clientX, e.clientY); });
+  window.addEventListener('mousemove', (e) => { if (draggingStrike) handleStrikePointer(e.clientX, e.clientY); });
+  window.addEventListener('mouseup', () => { draggingStrike = false; });
+  ui.strikePad.addEventListener('touchstart', (e) => {
+    draggingStrike = true;
+    const t = e.touches[0];
+    handleStrikePointer(t.clientX, t.clientY);
+  }, { passive: true });
+  ui.strikePad.addEventListener('touchmove', (e) => {
+    if (!draggingStrike) return;
+    const t = e.touches[0];
+    handleStrikePointer(t.clientX, t.clientY);
+  }, { passive: true });
+  ui.strikePad.addEventListener('touchend', () => { draggingStrike = false; });
+
+  // --- 시작 모달 & 다음 킥 버튼 ---
+  document.getElementById('btn-start-game').addEventListener('click', () => {
+    sound.init();
+    ui.startModal.classList.add('hidden');
+    setupFreeKick(true, true);
+  });
+
+  ui.btnNext.addEventListener('click', () => {
+    setupFreeKick(true, true);
+  });
+
+  // --- 터치/마우스 슛 버튼 ---
+  function startCharging() {
+    if (!ui.startModal.classList.contains('hidden')) return;
+    if (state.phase === 'aiming') {
+      sound.init();
+      state.phase = 'charging';
+      state.power = 5;
+      state.powerDir = 1;
+    } else if (state.phase === 'result') {
+      setupFreeKick(true, true);
+    }
+  }
+  function releaseShot() {
+    if (state.phase === 'charging') {
+      state.phase = 'runup';
+      state.runupProgress = 0;
+    }
+  }
+  ui.btnShootTouch.addEventListener('mousedown', startCharging);
+  ui.btnShootTouch.addEventListener('mouseup', releaseShot);
+  ui.btnShootTouch.addEventListener('touchstart', (e) => { e.preventDefault(); startCharging(); });
+  ui.btnShootTouch.addEventListener('touchend', (e) => { e.preventDefault(); releaseShot(); });
+
+  // --- 키보드 이벤트 리스너 ---
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Shift') state.keys.Shift = true;
+    if (e.code in state.keys) {
+      e.preventDefault();
+      state.keys[e.code] = true;
+    }
+
+    if (e.code === 'Space') {
+      e.preventDefault();
+      if (!e.repeat) startCharging();
+    }
+
+    if (e.code === 'KeyF' && !e.repeat) {
+      e.preventDefault();
+      setPreferredFoot(state.preferredFoot === 'right' ? 'left' : 'right');
+    }
+
+    if (e.code === 'Enter' && state.phase === 'result') {
+      setupFreeKick(true, true);
+    }
+    updateHUD();
+  });
+
+  window.addEventListener('keyup', (e) => {
+    if (e.key === 'Shift') state.keys.Shift = false;
+    if (e.code in state.keys) {
+      state.keys[e.code] = false;
+    }
+    if (e.code === 'Space') {
+      e.preventDefault();
+      releaseShot();
+    }
+    updateHUD();
+  });
+
+  // --- 킥 발사 물리 계산 ---
+  function launchBall() {
+    const pRatio = Math.max(0.15, state.power / 100);
+    // 거리와 파워에 비례한 초기 속도 (m/s, 약 16.0m/s ~ 33.5m/s)
+    const baseSpeed = 16.0 + pRatio * 17.5;
+
+    // 1. 발등 타점 Y (strikeY)가 수직 발사각 및 탑/백스핀에 미치는 영향
+    // aimPitch(↑/↓)로 수비벽(1.85m) 위로 높게 띄운 뒤, 톱스핀(strikeY < 0)과 강화된 중력으로 크로스바 아래로 뚝 떨어지도록 설계
+    const launchPitch = state.aimPitch + state.strikeY * 0.085 + (pRatio - 0.5) * 0.032;
+    const launchYaw = state.aimYaw;
+
+    const horizSpeed = baseSpeed * Math.cos(launchPitch);
+    state.ball.vx = horizSpeed * Math.sin(launchYaw);
+    state.ball.vz = horizSpeed * Math.cos(launchYaw);
+    state.ball.vy = baseSpeed * Math.sin(launchPitch);
+
+    // 2. 발등 타점 X (strikeX)가 횡회전(바나나킥 커브)에 미치는 영향
+    // 공의 오른쪽(+strikeX)을 인프론트로 감아 차면 반시계 회전 -> 왼쪽(-X)으로 휘어짐
+    state.ball.spinY = -state.strikeX * (10.5 + pRatio * 9.5);
+    // 공의 위쪽(-strikeY)을 차면 강력한 탑스핀(수비벽을 넘긴 뒤 아래로 급격히 떨어지는 드롭), 아래쪽(+strikeY)은 백스핀 양력
+    state.ball.spinX = state.strikeY < 0 ? state.strikeY * 11.5 : state.strikeY * 4.5;
+
+    state.ball.trail = [];
+    state.attempts += 1;
+    state.phase = 'flight';
+
+    // 수비벽 점프 트리거
+    const cfg = DIFFICULTY_CFG[state.difficulty];
+    if (Math.random() < cfg.wallJumpChance) {
+      state.wall.jumped = true;
+      state.wall.jumpVel = Math.sqrt(2 * GRAVITY * cfg.wallJumpHeight);
+    }
+
+    // 골키퍼 반응 타이머 초기화
+    state.gk.reacted = false;
+    state.gk.reactionTimer = cfg.gkReactionTime;
+
+    sound.playKick(pRatio);
+    updateHUD();
+  }
+
+  // --- 폭죽 생성 (득점 축하 연출) ---
+  function spawnFireworks() {
+    const colors = ['#34d399', '#fbbf24', '#38bdf8', '#f472b6', '#a78bfa', '#fb7185'];
+    for (let b = 0; b < 5; b++) {
+      setTimeout(() => {
+        const cx = viewW * (0.2 + Math.random() * 0.6);
+        const cy = viewH * (0.12 + Math.random() * 0.24);
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        sound.playFireworkPop();
+        for (let i = 0; i < 42; i++) {
+          const angle = (Math.PI * 2 * i) / 42 + (Math.random() - 0.5) * 0.15;
+          const speed = 70 + Math.random() * 170;
+          state.fireworks.push({
+            x: cx,
+            y: cy,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            alpha: 1,
+            color,
+            size: 2 + Math.random() * 2.5
+          });
+        }
+      }, b * 260);
+    }
+  }
+
+  // --- 결과 판정 및 배너 출력 ---
+  function finishShot(outcome, title, subtitle, colorClass) {
+    if (state.phase === 'result') return;
+    state.phase = 'result';
+    state.resultTimer = 0;
+
+    if (outcome === 'goal') {
+      state.goals += 1;
+      state.streak += 1;
+      sound.playGoalCheer();
+      spawnFireworks();
+    } else {
+      state.streak = 0;
+    }
+
+    ui.bannerTitle.textContent = title;
+    ui.bannerTitle.className = `font-display text-5xl sm:text-7xl drop-shadow-[0_6px_24px_rgba(0,0,0,0.85)] tracking-wider ${colorClass}`;
+    ui.bannerSub.textContent = subtitle;
+    ui.banner.classList.remove('hidden');
+    ui.banner.classList.add('banner-pop');
+    ui.btnNext.classList.remove('hidden');
+
+    updateHUD();
+  }
+
+  // --- 메인 프레임 물리 업데이트 ---
+  function update(dt) {
+    // 1. 조준 단계 입력 처리 (방향키 단독 vs Shift + 방향키 분리)
+    if (state.phase === 'aiming' || state.phase === 'charging') {
+      const isShift = state.keys.Shift;
+      const aimSpeedYaw = 0.72;   // 라디안/초
+      const aimSpeedPitch = 0.42; // 라디안/초
+      const strikeSpeed = 1.65;   // 타점 이동 속도/초
+
+      if (isShift) {
+        // [Shift + 방향키]: 공에 발등이 맞는 타점(Strike Point) 이동
+        if (state.keys.ArrowLeft) state.strikeX -= strikeSpeed * dt;
+        if (state.keys.ArrowRight) state.strikeX += strikeSpeed * dt;
+        if (state.keys.ArrowUp) state.strikeY -= strikeSpeed * dt;
+        if (state.keys.ArrowDown) state.strikeY += strikeSpeed * dt;
+
+        // 원형 축구공 표면 범위 내로 클램핑
+        const mag = Math.hypot(state.strikeX, state.strikeY);
+        if (mag > 1) {
+          state.strikeX /= mag;
+          state.strikeY /= mag;
+        }
+      } else {
+        // [방향키 단독]: 선수가 골대를 바라보는 방향(시선 각도) 변경
+        if (state.keys.ArrowLeft) state.aimYaw -= aimSpeedYaw * dt;
+        if (state.keys.ArrowRight) state.aimYaw += aimSpeedYaw * dt;
+        if (state.keys.ArrowUp) state.aimPitch += aimSpeedPitch * dt;
+        if (state.keys.ArrowDown) state.aimPitch -= aimSpeedPitch * dt;
+        // 거리에 맞춰 조준 각도 안전 범위 제한 (공이 놓인 각도를 중심으로 좌우 조준 가능)
+        const baseGoalYaw = Math.atan2(-state.spotOffsetX, state.distance);
+        const spanYaw = Math.atan((GOAL_WIDTH * 0.85) / state.distance);
+        state.aimYaw = Math.max(baseGoalYaw - spanYaw, Math.min(baseGoalYaw + spanYaw, state.aimYaw));
+        state.aimPitch = Math.max(0.05, Math.min(0.56, state.aimPitch));
+      }
+
+      if (state.keys.ArrowLeft || state.keys.ArrowRight || state.keys.ArrowUp || state.keys.ArrowDown) {
+        updateHUD();
+      }
+    }
+
+    // 2. 스페이스바 파워 게이지 충전
+    if (state.phase === 'charging') {
+      const cfg = DIFFICULTY_CFG[state.difficulty];
+      state.power += state.powerDir * cfg.gaugeSpeed * dt;
+      if (state.power >= 100) {
+        state.power = 100;
+        state.powerDir = -1;
+      } else if (state.power <= 4) {
+        state.power = 4;
+        state.powerDir = 1;
+      }
+      updateHUD();
+    }
+
+    // 3. 키커 도움닫기 모션
+    if (state.phase === 'runup') {
+      state.runupProgress += dt * 3.4;
+      if (state.runupProgress >= 1) {
+        state.runupProgress = 1;
+        launchBall();
+      }
+    }
+
+    // 4. 수비벽 점프 물리
+    if (state.wall.jumped) {
+      state.wall.jumpOffset += state.wall.jumpVel * dt;
+      state.wall.jumpVel -= GRAVITY * dt;
+      if (state.wall.jumpOffset <= 0) {
+        state.wall.jumpOffset = 0;
+        state.wall.jumpVel = 0;
+        state.wall.jumped = false;
+      }
+    }
+
+    // 5. 축구공 3D 비행 및 마그누스 효과(커브/드라이브)
+    if (state.phase === 'flight') {
+      const b = state.ball;
+      const prevZ = b.z;
+
+      // 마그누스 양력/횡력 (스핀과 속도에 비례)
+      const speed = Math.hypot(b.vx, b.vy, b.vz);
+      const magnusX = b.spinY * b.vz * 0.032;
+      const magnusY = b.spinX * b.vz * 0.036;
+
+      // 공기 저항
+      const drag = 0.011 * speed;
+      b.vx += (magnusX - drag * b.vx) * dt;
+      b.vy += (-GRAVITY + magnusY - drag * b.vy) * dt;
+      b.vz += (-drag * b.vz) * dt;
+
+      b.x += b.vx * dt;
+      b.y += b.vy * dt;
+      b.z += b.vz * dt;
+      b.rollAngle += speed * dt * 4.5;
+
+      // 궤적 잔상 기록
+      b.trail.push({ x: b.x, y: b.y, z: b.z });
+      if (b.trail.length > 26) b.trail.shift();
+
+      // 지면 바운드 처리
+      if (b.y <= BALL_RADIUS) {
+        b.y = BALL_RADIUS;
+        if (Math.abs(b.vy) > 1.8) {
+          b.vy = -b.vy * 0.52;
+          b.vx *= 0.82;
+          b.vz *= 0.82;
+        } else {
+          b.vy = 0;
+        }
+      }
+
+      // A) 수비벽(9.15m) 충돌 판정
+      if (prevZ < state.wall.z && b.z >= state.wall.z) {
+        for (const p of state.wall.players) {
+          const pTop = p.height + state.wall.jumpOffset;
+          if (Math.abs(b.x - p.x) < 0.31 && b.y <= pTop + BALL_RADIUS) {
+            sound.playWallBlock();
+            b.vz = -b.vz * 0.38;
+            b.vx += (b.x - p.x) * 4.5;
+            b.vy = Math.max(2.2, b.vy * 0.6);
+            finishShot('wall', 'WALL BLOCK!', '철벽 수비벽에 가로막혔습니다!', 'text-amber-400');
+            return;
+          }
+        }
+      }
+
+      // B) 골키퍼 AI 반응 및 다이빙 이동
+      const cfg = DIFFICULTY_CFG[state.difficulty];
+      const goalCenterX = -state.spotOffsetX;
+      if (!state.gk.reacted) {
+        state.gk.reactionTimer -= dt;
+        if (state.gk.reactionTimer <= 0) {
+          state.gk.reacted = true;
+          // 남은 비행 시간 예측 후 착지 지점 계산
+          const remTime = Math.max(0.05, (state.distance - b.z) / Math.max(1, b.vz));
+          const predX = b.x + b.vx * remTime + 0.5 * (b.spinY * b.vz * 0.032) * remTime * remTime;
+          const predY = Math.max(0.4, Math.min(GOAL_HEIGHT, b.y + b.vy * remTime - 0.5 * GRAVITY * remTime * remTime));
+
+          // 난이도별 예측 정확도 반영 (쉬움 난이도에서는 키퍼가 역동작에 걸릴 확률 증가)
+          const guessedRight = Math.random() < cfg.gkAccuracy;
+          const rawTargetX = guessedRight
+            ? predX
+            : goalCenterX - (predX - goalCenterX) * 0.85;
+
+          state.gk.targetX = Math.max(goalCenterX - GOAL_WIDTH * 0.46, Math.min(goalCenterX + GOAL_WIDTH * 0.46, rawTargetX));
+          state.gk.targetY = guessedRight ? predY : 0.8;
+          state.gk.diveDir = state.gk.targetX < state.gk.x - 0.25 ? -1 : (state.gk.targetX > state.gk.x + 0.25 ? 1 : 0);
+        }
+      } else {
+        const dx = state.gk.targetX - state.gk.x;
+        const step = Math.sign(dx) * Math.min(Math.abs(dx), cfg.gkDiveSpeed * dt);
+        state.gk.x += step;
+        if (state.gk.diveDir !== 0) {
+          state.gk.diveProgress = Math.min(1, state.gk.diveProgress + dt * 3.2);
+          state.gk.y = Math.sin(state.gk.diveProgress * Math.PI * 0.7) * Math.max(0, state.gk.targetY - 0.7);
+        }
+      }
+
+      // C) 골라인(z = state.distance) 통과 판정
+      const goalZ = state.distance;
+      if (prevZ < goalZ && b.z >= goalZ) {
+        const halfW = GOAL_WIDTH / 2;
+        const postRadius = 0.08;
+        const relGoalX = b.x - goalCenterX;
+
+        // 1. 골포스트 / 크로스바 충돌 체크
+        const hitLeftPost = Math.abs(relGoalX + halfW) < postRadius + BALL_RADIUS && b.y <= GOAL_HEIGHT + postRadius;
+        const hitRightPost = Math.abs(relGoalX - halfW) < postRadius + BALL_RADIUS && b.y <= GOAL_HEIGHT + postRadius;
+        const hitCrossbar = Math.abs(b.y - GOAL_HEIGHT) < postRadius + BALL_RADIUS && Math.abs(relGoalX) <= halfW + postRadius;
+
+        if (hitLeftPost || hitRightPost || hitCrossbar) {
+          sound.playPost();
+          b.vz = -b.vz * 0.45;
+          b.vy = Math.abs(b.vy) * 0.55 + 2.5;
+          finishShot('post', 'POST HIT!', '아깝습니다! 골대를 강타했습니다!', 'text-rose-400');
+          return;
+        }
+
+        // 2. 유효 슈팅 범위 내 진입 여부
+        if (Math.abs(relGoalX) < halfW && b.y < GOAL_HEIGHT) {
+          // 골키퍼 세이브 판정
+          const gkCenterY = state.gk.y + 0.95;
+          const distToGk = Math.hypot((b.x - state.gk.x) * 0.85, (b.y - gkCenterY) * 1.05);
+          if (distToGk < cfg.gkReach) {
+            sound.playWallBlock();
+            b.vz = -b.vz * 0.35;
+            b.vx += (b.x - state.gk.x) * 5;
+            finishShot('saved', 'SUPER SAVE!', '골키퍼의 슈퍼 세이브에 막혔습니다!', 'text-sky-400');
+            return;
+          }
+
+          // 득점 성공 (GOAL!)
+          state.netRipple = { active: true, x: b.x, y: b.y, time: 0 };
+          b.vz *= 0.25; // 골망에 걸려 감속
+          const cornerBonus = (Math.abs(relGoalX) > halfW * 0.68 && b.y > GOAL_HEIGHT * 0.58)
+            ? '완벽한 사각지대 원더골!'
+            : (Math.abs(state.strikeX) > 0.35 ? '예술적인 바나나킥 감아차기 골!' : `${state.distance}m 프리킥 득점 성공!`);
+          finishShot('goal', 'GOAL!!', cornerBonus, 'text-emerald-400');
+          return;
+        } else {
+          // 골대 밖으로 벗어남
+          const missReason = b.y >= GOAL_HEIGHT ? '크로스바 위로 높이 떴습니다!' : '골대 옆으로 벗어났습니다!';
+          finishShot('miss', 'MISS!', missReason, 'text-slate-300');
+          return;
+        }
+      }
+
+      // 비행 시간이 너무 길거나 공이 멈춘 경우 안전 종료
+      if (b.z > goalZ + 3.5 || (speed < 1.2 && b.z > 2)) {
+        finishShot('miss', 'MISS!', '슈팅이 골문에 도달하지 못했습니다.', 'text-slate-300');
+      }
+    }
+
+    // 6. 골망 출렁임 및 폭죽 업데이트
+    if (state.netRipple.active) {
+      state.netRipple.time += dt;
+    }
+
+    for (let i = state.fireworks.length - 1; i >= 0; i--) {
+      const f = state.fireworks[i];
+      f.x += f.vx * dt;
+      f.y += f.vy * dt;
+      f.vy += 120 * dt; // 폭죽 불꽃 중력
+      f.alpha -= dt * 0.72;
+      if (f.alpha <= 0) state.fireworks.splice(i, 1);
+    }
+  }
+
+  // ============================================================================
+  // 렌더링 파트 (포토리얼리스틱 2.5D 야간 스타디움 & 잔디 & 선수)
+  // ============================================================================
+
+  function drawStadiumAndPitch() {
+    const horizonY = viewH * 0.43;
+
+    // 1. 깊은 야간 하늘 그라데이션
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, horizonY);
+    skyGrad.addColorStop(0, '#020617');
+    skyGrad.addColorStop(0.55, '#09132b');
+    skyGrad.addColorStop(1, '#13254c');
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, viewW, horizonY + 2);
+
+    // 2. 원경 스타디움 관중석 실루엣 및 야간 서치라이트 타워
+    const standTop = horizonY - viewH * 0.14;
+    ctx.fillStyle = '#070d1f';
+    ctx.beginPath();
+    ctx.moveTo(0, horizonY);
+    ctx.lineTo(0, standTop + 18);
+    ctx.quadraticCurveTo(viewW * 0.5, standTop - 16, viewW, standTop + 18);
+    ctx.lineTo(viewW, horizonY);
+    ctx.closePath();
+    ctx.fill();
+
+    // 관중석 조명 반짝임 (보케 효과)
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+    for (let i = 0; i < 65; i++) {
+      const px = ((i * 197) % viewW);
+      const py = standTop + 14 + ((i * 53) % Math.max(12, (horizonY - standTop - 18)));
+      ctx.fillRect(px, py, 2, 2);
+    }
+
+    // 좌우 대형 스타디움 투광등(Floodlights) 볼류메트릭 빛줄기
+    [0.14, 0.86].forEach((rx) => {
+      const lx = viewW * rx;
+      const ly = standTop - 18;
+      const beam = ctx.createRadialGradient(lx, ly, 4, lx, ly, viewW * 0.36);
+      beam.addColorStop(0, 'rgba(255, 255, 240, 0.42)');
+      beam.addColorStop(0.25, 'rgba(186, 230, 253, 0.11)');
+      beam.addColorStop(1, 'rgba(186, 230, 253, 0)');
+      ctx.fillStyle = beam;
+      ctx.beginPath();
+      ctx.arc(lx, ly, viewW * 0.36, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 라이트 패널 본체
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(lx - 14, ly - 6, 28, 10);
+    });
+
+    // LED 광고 보드 (골라인 뒤쪽)
+    const gcX = -state.spotOffsetX;
+    const adLeft = project3D(gcX - 18, 0.9, state.distance + 4.2);
+    const adRight = project3D(gcX + 18, 0, state.distance + 4.2);
+    if (adRight.x > adLeft.x) {
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(adLeft.x, adLeft.y, adRight.x - adLeft.x, Math.max(4, adRight.y - adLeft.y));
+      ctx.fillStyle = '#10b981';
+      ctx.fillRect(adLeft.x, adLeft.y, adRight.x - adLeft.x, 2);
+    }
+
+    // 3. 천연 잔디 구장 베이스 그라데이션
+    const grassGrad = ctx.createLinearGradient(0, horizonY, 0, viewH);
+    grassGrad.addColorStop(0, '#0b3b1e');
+    grassGrad.addColorStop(0.4, '#11532b');
+    grassGrad.addColorStop(1, '#166534');
+    ctx.fillStyle = grassGrad;
+    ctx.fillRect(0, horizonY, viewW, viewH - horizonY);
+
+    // 4. 원근 잔디 깎기 줄무늬 (Mowing Stripes)
+    const stripeDepth = 3.5;
+    for (let z = -2; z < state.distance + 12; z += stripeDepth * 2) {
+      const p1L = project3D(gcX - 28, 0, z);
+      const p1R = project3D(gcX + 28, 0, z);
+      const p2L = project3D(gcX - 28, 0, z + stripeDepth);
+      const p2R = project3D(gcX + 28, 0, z + stripeDepth);
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.045)';
+      ctx.beginPath();
+      ctx.moveTo(p1L.x, p1L.y);
+      ctx.lineTo(p1R.x, p1R.y);
+      ctx.lineTo(p2R.x, p2R.y);
+      ctx.lineTo(p2L.x, p2L.y);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // 5. 페널티 박스, 골 에어리어, 페널티 아크 라인 그리기
+    const gz = state.distance;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.72)';
+    ctx.lineWidth = 2;
+
+    function drawGroundLine(x1, z1, x2, z2) {
+      const a = project3D(x1, 0, z1);
+      const b = project3D(x2, 0, z2);
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+    }
+
+    // 골라인 & 엔드라인
+    drawGroundLine(gcX - 24, gz, gcX + 24, gz);
+    // 페널티 박스 (폭 40.32m, 깊이 16.5m)
+    drawGroundLine(gcX - 20.16, gz, gcX - 20.16, gz - 16.5);
+    drawGroundLine(gcX + 20.16, gz, gcX + 20.16, gz - 16.5);
+    drawGroundLine(gcX - 20.16, gz - 16.5, gcX + 20.16, gz - 16.5);
+    // 골 에어리어 (폭 18.32m, 깊이 5.5m)
+    drawGroundLine(gcX - 9.16, gz, gcX - 9.16, gz - 5.5);
+    drawGroundLine(gcX + 9.16, gz, gcX + 9.16, gz - 5.5);
+    drawGroundLine(gcX - 9.16, gz - 5.5, gcX + 9.16, gz - 5.5);
+
+    // 페널티 스팟 (골라인에서 11m)
+    const penSpot = project3D(gcX, 0, gz - 11);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.beginPath();
+    ctx.ellipse(penSpot.x, penSpot.y, Math.max(2, penSpot.scale * 0.14), Math.max(1, penSpot.scale * 0.05), 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 프리킥 스팟 (z = 0) & 심판의 배니싱 스프레이 흰색 라인
+    const fkSpot = project3D(0, 0, 0);
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.ellipse(fkSpot.x, fkSpot.y, fkSpot.scale * 0.16, fkSpot.scale * 0.06, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 9.15m 수비벽 배니싱 스프레이 라인
+    drawGroundLine(state.wall.centerX - 1.5, state.wall.z, state.wall.centerX + 1.5, state.wall.z);
+  }
+
+  function drawGoalAndNet() {
+    const gz = state.distance;
+    const gcX = -state.spotOffsetX;
+    const halfW = GOAL_WIDTH / 2;
+    const netDepth = 1.9;
+
+    const flb = project3D(gcX - halfW, 0, gz);
+    const frb = project3D(gcX + halfW, 0, gz);
+    const flt = project3D(gcX - halfW, GOAL_HEIGHT, gz);
+    const frt = project3D(gcX + halfW, GOAL_HEIGHT, gz);
+
+    const blb = project3D(gcX - halfW, 0, gz + netDepth);
+    const brb = project3D(gcX + halfW, 0, gz + netDepth);
+    const blt = project3D(gcX - halfW * 0.96, GOAL_HEIGHT * 0.92, gz + netDepth);
+    const brt = project3D(gcX + halfW * 0.96, GOAL_HEIGHT * 0.92, gz + netDepth);
+
+    // 그물망 내부 어두운 음영
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.28)';
+    ctx.beginPath();
+    ctx.moveTo(flt.x, flt.y);
+    ctx.lineTo(frt.x, frt.y);
+    ctx.lineTo(frb.x, frb.y);
+    ctx.lineTo(flb.x, flb.y);
+    ctx.closePath();
+    ctx.fill();
+
+    // 그물망 격자 (득점 시 출렁임 애니메이션 반영)
+    ctx.strokeStyle = 'rgba(241, 245, 249, 0.34)';
+    ctx.lineWidth = 1;
+
+    const cols = 18;
+    const rows = 8;
+    const rippleAmp = state.netRipple.active ? Math.sin(state.netRipple.time * 16) * Math.exp(-state.netRipple.time * 2.2) * 14 : 0;
+
+    // 세로 그물선
+    for (let i = 0; i <= cols; i++) {
+      const t = i / cols;
+      const topX = flt.x + (frt.x - flt.x) * t;
+      const topY = flt.y + (frt.y - flt.y) * t;
+      const backTopX = blt.x + (brt.x - blt.x) * t;
+      const backTopY = blt.y + (brt.y - blt.y) * t;
+      const backBotX = blb.x + (brb.x - blb.x) * t;
+      const backBotY = blb.y + (brb.y - blb.y) * t;
+
+      ctx.beginPath();
+      ctx.moveTo(topX, topY);
+      ctx.lineTo(backTopX, backTopY);
+      ctx.quadraticCurveTo(
+        (backTopX + backBotX) * 0.5 + rippleAmp * 0.4,
+        (backTopY + backBotY) * 0.5,
+        backBotX,
+        backBotY
+      );
+      ctx.stroke();
+    }
+
+    // 가로 그물선
+    for (let j = 0; j <= rows; j++) {
+      const t = j / rows;
+      const leftX = blt.x + (blb.x - blt.x) * t;
+      const leftY = blt.y + (blb.y - blt.y) * t;
+      const rightX = brt.x + (brb.x - brt.x) * t;
+      const rightY = brt.y + (brb.y - brt.y) * t;
+
+      ctx.beginPath();
+      ctx.moveTo(leftX, leftY);
+      ctx.quadraticCurveTo(
+        (leftX + rightX) * 0.5,
+        (leftY + rightY) * 0.5 + rippleAmp,
+        rightX,
+        rightY
+      );
+      ctx.stroke();
+    }
+
+    // 측면 그물 지지 프레임
+    ctx.strokeStyle = 'rgba(203, 213, 225, 0.5)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(flt.x, flt.y); ctx.lineTo(blt.x, blt.y); ctx.lineTo(blb.x, blb.y); ctx.lineTo(flb.x, flb.y);
+    ctx.moveTo(frt.x, frt.y); ctx.lineTo(brt.x, brt.y); ctx.lineTo(brb.x, brb.y); ctx.lineTo(frb.x, frb.y);
+    ctx.stroke();
+
+    // 메인 알루미늄 화이트 골포스트 & 크로스바
+    const postWidth = Math.max(3.5, flb.scale * 0.13);
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = postWidth;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+    ctx.shadowBlur = 8;
+
+    ctx.beginPath();
+    ctx.moveTo(flb.x, flb.y);
+    ctx.lineTo(flt.x, flt.y);
+    ctx.lineTo(frt.x, frt.y);
+    ctx.lineTo(frb.x, frb.y);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+
+  function drawGoalkeeper() {
+    const gk = state.gk;
+    const base = project3D(gk.x, gk.y, gk.z);
+    const s = base.scale;
+
+    ctx.save();
+    ctx.translate(base.x, base.y);
+
+    // 그림자
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.38)';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, s * 0.42, s * 0.12, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 다이빙 시 몸체 회전 각도
+    const tilt = gk.diveDir * gk.diveProgress * (Math.PI * 0.42);
+    ctx.rotate(tilt);
+
+    // 다리 (형광 오렌지 유니폼 하의 & 양말)
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(-s * 0.18, -s * 0.85, s * 0.14, s * 0.85);
+    ctx.fillRect(s * 0.04, -s * 0.85, s * 0.14, s * 0.85);
+
+    // 상의 (형광 골키퍼 저지)
+    ctx.fillStyle = '#f97316';
+    ctx.beginPath();
+    ctx.roundRect(-s * 0.24, -s * 1.52, s * 0.48, s * 0.7, s * 0.08);
+    ctx.fill();
+
+    // 양팔 및 골키퍼 장갑
+    const armSpread = gk.diveProgress > 0.1 ? 1.15 : 0.65;
+    ctx.strokeStyle = '#f97316';
+    ctx.lineWidth = Math.max(2, s * 0.11);
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(-s * 0.22, -s * 1.4);
+    ctx.lineTo(-s * armSpread, -s * (1.25 + gk.diveProgress * 0.45));
+    ctx.moveTo(s * 0.22, -s * 1.4);
+    ctx.lineTo(s * armSpread, -s * (1.25 + gk.diveProgress * 0.45));
+    ctx.stroke();
+
+    // 장갑
+    ctx.fillStyle = '#fde047';
+    ctx.beginPath();
+    ctx.arc(-s * armSpread, -s * (1.25 + gk.diveProgress * 0.45), s * 0.09, 0, Math.PI * 2);
+    ctx.arc(s * armSpread, -s * (1.25 + gk.diveProgress * 0.45), s * 0.09, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 머리
+    ctx.fillStyle = '#fed7aa';
+    ctx.beginPath();
+    ctx.arc(0, -s * 1.72, s * 0.16, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  function drawDefensiveWall() {
+    const jumpY = state.wall.jumpOffset;
+    for (const p of state.wall.players) {
+      const ground = project3D(p.x, 0, state.wall.z);
+      const body = project3D(p.x, jumpY, state.wall.z);
+      const s = body.scale;
+
+      // 지면 그림자
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.42)';
+      ctx.beginPath();
+      ctx.ellipse(ground.x, ground.y, s * 0.28, s * 0.09, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.save();
+      ctx.translate(body.x, body.y);
+
+      // 축구화 & 스타킹
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(-s * 0.16, -s * 0.85, s * 0.13, s * 0.85);
+      ctx.fillRect(s * 0.03, -s * 0.85, s * 0.13, s * 0.85);
+
+      // 수비팀 유니폼 상의 (네이비 블루 & 화이트 스트라이프)
+      ctx.fillStyle = '#1d4ed8';
+      ctx.beginPath();
+      ctx.roundRect(-s * 0.23, -s * 1.54, s * 0.46, s * 0.72, s * 0.08);
+      ctx.fill();
+
+      // 등번호 표시
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `bold ${Math.max(8, Math.floor(s * 0.26))}px Chakra Petch, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText(String(p.number), 0, -s * 1.12);
+
+      // 급소 보호 포즈의 팔
+      ctx.strokeStyle = '#1e40af';
+      ctx.lineWidth = Math.max(2, s * 0.1);
+      ctx.beginPath();
+      ctx.moveTo(-s * 0.22, -s * 1.44);
+      ctx.lineTo(-s * 0.08, -s * 0.92);
+      ctx.moveTo(s * 0.22, -s * 1.44);
+      ctx.lineTo(s * 0.08, -s * 0.92);
+      ctx.stroke();
+
+      // 머리 & 헤어
+      ctx.fillStyle = '#fdba74';
+      ctx.beginPath();
+      ctx.arc(0, -s * 1.72, s * 0.15, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#1e293b';
+      ctx.beginPath();
+      ctx.arc(0, -s * 1.76, s * 0.15, Math.PI, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+    }
+  }
+
+  function drawAimTrajectoryPreview() {
+    if (state.phase !== 'aiming' && state.phase !== 'charging') return;
+
+    // 현재 시선 각도(aimYaw, aimPitch)와 타점 스핀(strikeX, strikeY)을 반영한 예상 궤적 점선 표시
+    const estPower = state.phase === 'charging' ? (state.power / 100) : 0.68;
+    const baseSpeed = 16.0 + Math.max(0.2, estPower) * 17.5;
+    const launchPitch = state.aimPitch + state.strikeY * 0.085 + (estPower - 0.5) * 0.032;
+    const horizSpeed = baseSpeed * Math.cos(launchPitch);
+
+    let px = 0, py = BALL_RADIUS, pz = 0;
+    let vx = horizSpeed * Math.sin(state.aimYaw);
+    let vz = horizSpeed * Math.cos(state.aimYaw);
+    let vy = baseSpeed * Math.sin(launchPitch);
+    const spinY = -state.strikeX * (10.5 + estPower * 9.5);
+    const spinX = state.strikeY < 0 ? state.strikeY * 11.5 : state.strikeY * 4.5;
+
+    const dtStep = 0.045;
+    const maxPreviewSteps = DIFFICULTY_CFG[state.difficulty].previewSteps;
+    ctx.save();
+    for (let step = 1; step <= maxPreviewSteps; step++) {
+      const speed = Math.hypot(vx, vy, vz);
+      const drag = 0.011 * speed;
+      const magnusX = spinY * vz * 0.032;
+      const magnusY = spinX * vz * 0.036;
+      vx += (magnusX - drag * vx) * dtStep;
+      vy += (-GRAVITY + magnusY - drag * vy) * dtStep;
+      vz += (-drag * vz) * dtStep;
+      px += vx * dtStep;
+      py += vy * dtStep;
+      pz += vz * dtStep;
+
+      if (pz > state.distance || py < 0.05) break;
+      const pt = project3D(px, py, pz);
+      const alpha = Math.max(0.08, 0.72 - step * 0.035);
+      ctx.fillStyle = state.keys.Shift
+        ? `rgba(244, 114, 182, ${alpha})`
+        : `rgba(52, 211, 153, ${alpha})`;
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, Math.max(2.2, pt.scale * 0.065), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawBallAndTrail() {
+    const b = state.ball;
+
+    // 1. 비행 잔상 트레일
+    if (b.trail.length > 1) {
+      for (let i = 1; i < b.trail.length; i++) {
+        const prev = project3D(b.trail[i - 1].x, b.trail[i - 1].y, b.trail[i - 1].z);
+        const curr = project3D(b.trail[i].x, b.trail[i].y, b.trail[i].z);
+        const ratio = i / b.trail.length;
+        ctx.strokeStyle = `rgba(253, 224, 71, ${ratio * 0.45})`;
+        ctx.lineWidth = Math.max(1.5, curr.scale * BALL_RADIUS * 1.4 * ratio);
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(prev.x, prev.y);
+        ctx.lineTo(curr.x, curr.y);
+        ctx.stroke();
+      }
+    }
+
+    // 2. 잔디 위 공 그림자 (공 높이가 높아질수록 흐려지고 작아짐)
+    const shadowProj = project3D(b.x, 0, b.z);
+    const heightFactor = Math.max(0.25, 1 - b.y * 0.14);
+    ctx.fillStyle = `rgba(0, 0, 0, ${0.48 * heightFactor})`;
+    ctx.beginPath();
+    ctx.ellipse(
+      shadowProj.x,
+      shadowProj.y,
+      shadowProj.scale * BALL_RADIUS * 1.25 * heightFactor,
+      shadowProj.scale * BALL_RADIUS * 0.45 * heightFactor,
+      0, 0, Math.PI * 2
+    );
+    ctx.fill();
+
+    // 3. 3D 입체 쉐이딩 축구공 본체
+    const ballProj = project3D(b.x, b.y, b.z);
+    const r = Math.max(4, ballProj.scale * BALL_RADIUS);
+
+    ctx.save();
+    ctx.translate(ballProj.x, ballProj.y);
+
+    const ballGrad = ctx.createRadialGradient(-r * 0.35, -r * 0.35, r * 0.1, 0, 0, r);
+    ballGrad.addColorStop(0, '#ffffff');
+    ballGrad.addColorStop(0.65, '#e2e8f0');
+    ballGrad.addColorStop(1, '#64748b');
+    ctx.fillStyle = ballGrad;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 회전하는 축구공 오각형 무늬
+    ctx.rotate(b.rollAngle);
+    ctx.fillStyle = '#0f172a';
+    for (let i = 0; i < 3; i++) {
+      const ang = (i * Math.PI * 2) / 3;
+      ctx.beginPath();
+      ctx.arc(Math.cos(ang) * r * 0.48, Math.sin(ang) * r * 0.48, r * 0.24, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 조준 단계일 때 공 위에 발등 타격 지점(붉은 포인트) 실시간 시각화
+    if (state.phase === 'aiming' || state.phase === 'charging') {
+      ctx.rotate(-b.rollAngle);
+      const hitX = state.strikeX * r * 0.68;
+      const hitY = state.strikeY * r * 0.68;
+      ctx.fillStyle = 'rgba(244, 63, 94, 0.9)';
+      ctx.beginPath();
+      ctx.arc(hitX, hitY, Math.max(3, r * 0.22), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  }
+
+  function drawKicker() {
+    const isLeft = state.preferredFoot === 'left';
+    const sideSign = isLeft ? 1 : -1; // 오른발: 공 왼쪽 뒤(-1), 왼발: 공 오른쪽 뒤(+1)
+
+    // 키커 위치: 도움닫기 진행도에 따라 대각선 뒤쪽에서 공 옆 임팩트 위치로 이동
+    const t = state.phase === 'runup' ? state.runupProgress : (state.phase === 'flight' || state.phase === 'result' ? 1 : 0);
+    const startX = sideSign * 1.28 + Math.sin(state.aimYaw) * 0.45;
+    const startZ = -2.12;
+    const endX = sideSign * 0.34;
+    const endZ = -0.18;
+
+    const kx = startX + (endX - startX) * t;
+    const kz = startZ + (endZ - startZ) * t;
+    const bounceY = state.phase === 'runup' ? Math.abs(Math.sin(t * Math.PI * 3)) * 0.12 : 0;
+
+    const proj = project3D(kx, bounceY, kz);
+    const s = proj.scale;
+
+    ctx.save();
+    ctx.translate(proj.x, proj.y);
+
+    // 그림자
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, s * 0.34, s * 0.11, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 몸체 기울기 (오른발은 왼쪽으로, 왼발은 오른쪽으로 상체가 기울어짐)
+    const lean = t > 0.7 ? (sideSign * 0.22 - state.strikeX * 0.08) : (sideSign * 0.05);
+    ctx.rotate(lean);
+
+    const swingAngle = state.phase === 'runup'
+      ? Math.sin((t - 0.5) * Math.PI) * 0.65
+      : (t >= 1 ? -0.45 : 0.15);
+
+    if (!isLeft) {
+      // [오른발 키커]: 왼발이 디딤발, 오른발이 슈팅발
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(-s * 0.2, -s * 0.85, s * 0.14, s * 0.85);
+
+      ctx.save();
+      ctx.translate(s * 0.1, -s * 0.82);
+      ctx.rotate(swingAngle);
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(-s * 0.07, 0, s * 0.14, s * 0.82);
+      ctx.fillStyle = '#10b981';
+      ctx.beginPath();
+      ctx.ellipse(s * 0.03, s * 0.82, s * 0.12, s * 0.06, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    } else {
+      // [왼발 키커]: 오른발이 디딤발, 왼발이 슈팅발
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(s * 0.06, -s * 0.85, s * 0.14, s * 0.85);
+
+      ctx.save();
+      ctx.translate(-s * 0.1, -s * 0.82);
+      ctx.rotate(-swingAngle);
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(-s * 0.07, 0, s * 0.14, s * 0.82);
+      ctx.fillStyle = '#38bdf8';
+      ctx.beginPath();
+      ctx.ellipse(-s * 0.03, s * 0.82, s * 0.12, s * 0.06, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // 유니폼 상의 (에이스 프리킥 스페셜리스트 레드 저지 #10)
+    ctx.fillStyle = '#dc2626';
+    ctx.beginPath();
+    ctx.roundRect(-s * 0.26, -s * 1.56, s * 0.52, s * 0.74, s * 0.09);
+    ctx.fill();
+
+    // 등번호 10번
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `bold ${Math.max(10, Math.floor(s * 0.28))}px Chakra Petch, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText('10', 0, -s * 1.12);
+
+    // 밸런스를 잡는 반대팔 (오른발은 왼팔, 왼발은 오른팔을 넓게 펼침)
+    ctx.strokeStyle = '#dc2626';
+    ctx.lineWidth = Math.max(2.5, s * 0.11);
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(sideSign * s * 0.25, -s * 1.45);
+    ctx.lineTo(sideSign * s * 0.62, -s * 1.12);
+    ctx.stroke();
+
+    // 머리
+    ctx.fillStyle = '#fed7aa';
+    ctx.beginPath();
+    ctx.arc(0, -s * 1.75, s * 0.16, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#0f172a';
+    ctx.beginPath();
+    ctx.arc(0, -s * 1.8, s * 0.16, Math.PI, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  function drawFireworks() {
+    for (const f of state.fireworks) {
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, f.alpha);
+      ctx.fillStyle = f.color;
+      ctx.shadowColor = f.color;
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, f.size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // --- 메인 게임 루프 ---
+  function gameLoop(timestamp) {
+    if (!state.lastTime) state.lastTime = timestamp;
+    const dt = Math.min(0.05, (timestamp - state.lastTime) / 1000);
+    state.lastTime = timestamp;
+
+    update(dt);
+
+    ctx.clearRect(0, 0, viewW, viewH);
+    drawStadiumAndPitch();
+    drawFireworks();
+    drawGoalAndNet();
+    drawGoalkeeper();
+    drawDefensiveWall();
+    drawAimTrajectoryPreview();
+    drawBallAndTrail();
+    drawKicker();
+
+    requestAnimationFrame(gameLoop);
+  }
+
+  window.onload = function () {
+    setupFreeKick(true);
+    requestAnimationFrame(gameLoop);
+  };
+})();
+</script>
+</body>
+</html>
